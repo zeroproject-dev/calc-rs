@@ -20,6 +20,11 @@ enum OperatorType {
     Divide,
     Exponent,
     Modulus,
+
+    //Functions
+    Sin,
+    Cos,
+    Max,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -34,6 +39,7 @@ struct Operator {
     associativity: Associativity,
     precedence: u8,
     literal: String,
+    number_of_operands: u8,
 }
 
 impl AsRef<std::ffi::OsStr> for Operator {
@@ -74,7 +80,7 @@ impl Lexer {
 
             '0'..='9' => self.parse_number(),
 
-            ' ' => {
+            ' ' | ',' => {
                 self.position += 1;
                 self.next_token()
             }
@@ -122,6 +128,7 @@ impl Lexer {
                     op: OperatorType::Add,
                     associativity: Associativity::Left,
                     precedence: 2,
+                    number_of_operands: 2,
                     literal: c.to_string(),
                 }))
             }
@@ -132,6 +139,7 @@ impl Lexer {
                     op: OperatorType::Subtract,
                     associativity: Associativity::Left,
                     precedence: 2,
+                    number_of_operands: 2,
                     literal: c.to_string(),
                 }))
             }
@@ -141,6 +149,7 @@ impl Lexer {
                 Some(Token::Op(Operator {
                     op: OperatorType::Divide,
                     associativity: Associativity::Left,
+                    number_of_operands: 2,
                     precedence: 3,
                     literal: c.to_string(),
                 }))
@@ -152,6 +161,7 @@ impl Lexer {
                     op: OperatorType::Multiply,
                     associativity: Associativity::Left,
                     precedence: 3,
+                    number_of_operands: 2,
                     literal: c.to_string(),
                 }))
             }
@@ -162,6 +172,7 @@ impl Lexer {
                     op: OperatorType::Exponent,
                     associativity: Associativity::Right,
                     precedence: 4,
+                    number_of_operands: 2,
                     literal: c.to_string(),
                 }))
             }
@@ -172,6 +183,7 @@ impl Lexer {
                     op: OperatorType::Modulus,
                     associativity: Associativity::Left,
                     precedence: 3,
+                    number_of_operands: 2,
                     literal: c.to_string(),
                 }))
             }
@@ -183,6 +195,7 @@ impl Lexer {
                         op: OperatorType::Exponent,
                         associativity: Associativity::Right,
                         precedence: 4,
+                        number_of_operands: 2,
                         literal: "**".to_string(),
                     }))
                 } else {
@@ -191,11 +204,69 @@ impl Lexer {
                         op: OperatorType::Multiply,
                         associativity: Associativity::Left,
                         precedence: 3,
+                        number_of_operands: 2,
                         literal: c.to_string(),
                     }))
                 }
             }
 
+            _ => self.parse_words(),
+        }
+    }
+
+    fn parse_words(&mut self) -> Option<Token> {
+        let c = self.curr_char();
+        match c {
+            's' => {
+                if self.next_char(1) == 'i' && self.next_char(2) == 'n' {
+                    self.position += 3;
+                    Some(Token::Op(Operator {
+                        op: OperatorType::Sin,
+                        associativity: Associativity::Right,
+                        precedence: 5,
+                        number_of_operands: 1,
+                        literal: "sin".to_string(),
+                    }))
+                } else {
+                    None
+                }
+            }
+            'c' => {
+                if self.next_char(1) == 'o' && self.next_char(2) == 's' {
+                    self.position += 3;
+                    Some(Token::Op(Operator {
+                        op: OperatorType::Cos,
+                        associativity: Associativity::Right,
+                        precedence: 5,
+                        number_of_operands: 1,
+                        literal: "cos".to_string(),
+                    }))
+                } else {
+                    None
+                }
+            }
+            'm' => {
+                if self.next_char(1) == 'a' && self.next_char(2) == 'x' {
+                    self.position += 3;
+                    Some(Token::Op(Operator {
+                        op: OperatorType::Max,
+                        associativity: Associativity::Left,
+                        precedence: 5,
+                        number_of_operands: 2,
+                        literal: "max".to_string(),
+                    }))
+                } else {
+                    None
+                }
+            }
+            'p' => {
+                if self.next_char(1) == 'i' {
+                    self.position += 2;
+                    Some(Token::Number(std::f64::consts::PI))
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -209,7 +280,7 @@ impl Iterator for Lexer {
     }
 }
 
-fn shutting_yard(lexer: Lexer) -> Result<VecDeque<Token>, ()> {
+fn shunting_yard(lexer: Lexer) -> Result<VecDeque<Token>, ()> {
     let mut out: VecDeque<Token> = VecDeque::new();
     let mut operators: VecDeque<Token> = VecDeque::new();
 
@@ -220,7 +291,24 @@ fn shutting_yard(lexer: Lexer) -> Result<VecDeque<Token>, ()> {
             Token::ParenthesisRight => loop {
                 if let Some(op) = operators.pop_front() {
                     match op {
-                        Token::ParenthesisLeft => break,
+                        Token::ParenthesisLeft => {
+                            if let Some(op) = operators.front() {
+                                match op {
+                                    Token::Op(op) => {
+                                        if op.precedence == 5 {
+                                            let front = operators.pop_front().unwrap();
+                                            out.push_back(front);
+                                            break;
+                                        } else {
+                                            return Err(());
+                                        }
+                                    }
+                                    _ => break,
+                                }
+                            } else {
+                                return Err(());
+                            }
+                        }
                         _ => out.push_back(op),
                     }
                 } else {
@@ -277,6 +365,16 @@ fn evaluate_rpn(rpn: VecDeque<Token>) -> Result<f64, ()> {
     rpn.iter().for_each(|token| match token {
         Token::Number(num) => numbers.push(*num),
         Token::Op(op) => {
+            if op.number_of_operands == 1 {
+                let l = numbers.pop().unwrap();
+                numbers.push(match op.op {
+                    OperatorType::Sin => l.sin(),
+                    OperatorType::Cos => l.cos(),
+                    _ => 0.0,
+                });
+                return;
+            }
+
             let r = numbers.pop().unwrap();
             let l = numbers.pop().unwrap();
             numbers.push(match op.op {
@@ -286,6 +384,8 @@ fn evaluate_rpn(rpn: VecDeque<Token>) -> Result<f64, ()> {
                 OperatorType::Divide => l / r,
                 OperatorType::Exponent => l.powf(r),
                 OperatorType::Modulus => l % r,
+                OperatorType::Max => l.max(r),
+                _ => 0.0,
             });
         }
         _ => {}
@@ -300,7 +400,7 @@ fn evaluate_rpn(rpn: VecDeque<Token>) -> Result<f64, ()> {
 
 fn eval(input: String) -> Result<f64, ()> {
     let lexer = Lexer::new(input);
-    let infinix_notation = shutting_yard(lexer);
+    let infinix_notation = shunting_yard(lexer);
     evaluate_rpn(infinix_notation?)
 }
 
