@@ -8,7 +8,7 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(data: String) -> Self {
-        let data = data.to_lowercase();
+        let data = data.to_lowercase().replace(' ', "");
         Lexer { data, position: 0 }
     }
 
@@ -45,6 +45,13 @@ impl Lexer {
         }
     }
 
+    fn is_unary_operator(&self) -> bool {
+        self.position == 0
+            || self.curr_char() == '('
+            || self.prev_char() == '('
+            || self.prev_char() == ','
+    }
+
     fn curr_char(&self) -> char {
         self.data.chars().nth(self.position).unwrap_or('\0')
     }
@@ -54,6 +61,14 @@ impl Lexer {
             .chars()
             .nth(self.position + offset)
             .unwrap_or('\0')
+    }
+
+    fn prev_char(&self) -> char {
+        if self.position > 0 {
+            self.data.chars().nth(self.position - 1).unwrap_or('\0')
+        } else {
+            '\0'
+        }
     }
 
     fn next_chars(&self, length: usize) -> String {
@@ -80,6 +95,15 @@ impl Lexer {
 
     fn parse_operator(&mut self) -> Option<Token> {
         let c = self.curr_char();
+        let is_unary = self.is_unary_operator();
+
+        if is_unary && (c == '-' || c == '−') {
+            self.position += 1;
+            let number = self.parse_number()?;
+            if let Token::Number(num) = number {
+                return Some(Token::Number(-num));
+            }
+        }
 
         match OPERATOR_CHARS.contains(&c) {
             true => {

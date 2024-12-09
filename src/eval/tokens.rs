@@ -18,6 +18,10 @@ pub enum OperatorType {
     Sin,
     Cos,
     Max,
+    Sqrt,
+    Abs,
+    Log,
+    Ln,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,6 +68,46 @@ pub fn get_function_words() -> Vec<(&'static str, Operator)> {
                 precedence: 3,
                 number_of_operands: 2,
                 literal: "*".to_string(),
+            },
+        ),
+        (
+            "abs",
+            Operator {
+                op: OperatorType::Abs,
+                associativity: Associativity::Right,
+                precedence: 5,
+                number_of_operands: 1,
+                literal: "abs".to_string(),
+            },
+        ),
+        (
+            "log",
+            Operator {
+                op: OperatorType::Log,
+                associativity: Associativity::Right,
+                precedence: 5,
+                number_of_operands: 1,
+                literal: "log".to_string(),
+            },
+        ),
+        (
+            "ln",
+            Operator {
+                op: OperatorType::Ln,
+                associativity: Associativity::Right,
+                precedence: 5,
+                number_of_operands: 1,
+                literal: "ln".to_string(),
+            },
+        ),
+        (
+            "sqrt",
+            Operator {
+                op: OperatorType::Sqrt,
+                associativity: Associativity::Right,
+                precedence: 5,
+                number_of_operands: 1,
+                literal: "sqrt".to_string(),
             },
         ),
         (

@@ -46,6 +46,10 @@ fn evaluate_operator(op: &Operator, l: Option<f64>, r: Option<f64>) -> Result<f6
         let res = match op.op {
             OperatorType::Sin => r.sin(),
             OperatorType::Cos => r.cos(),
+            OperatorType::Sqrt => r.sqrt(),
+            OperatorType::Abs => r.abs(),
+            OperatorType::Log => r.log10(),
+            OperatorType::Ln => r.ln(),
             _ => return Err(()),
         };
 
@@ -144,6 +148,34 @@ mod tests {
     #[test]
     fn eval_cosine_function() {
         let input = "cos(0)".to_string();
+        let result = eval(input);
+        assert_eq!(result, Ok(1.0));
+    }
+
+    #[test]
+    fn eval_sqrt_function() {
+        let input = "sqrt(16)".to_string();
+        let result = eval(input);
+        assert_eq!(result, Ok(4.0));
+    }
+
+    #[test]
+    fn eval_abs_function() {
+        let input = "abs(-2)".to_string();
+        let result = eval(input);
+        assert_eq!(result, Ok(2.0));
+    }
+
+    #[test]
+    fn eval_log_function() {
+        let input = "log(10)".to_string();
+        let result = eval(input);
+        assert_eq!(result, Ok(1.0));
+    }
+
+    #[test]
+    fn eval_ln_function() {
+        let input = "ln(2.718281828459045)".to_string();
         let result = eval(input);
         assert_eq!(result, Ok(1.0));
     }
